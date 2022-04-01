@@ -1,0 +1,103 @@
+---
+title: "NCAA Baseball"
+author: "Jack Weyer"
+date: "3/31/2022"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+rate16 = read_csv('2016_batting_rate_stat_leaders_batting_all_all_minPA_100.csv')
+rate17 = read_csv('2017_batting_rate_stat_leaders_batting_all_all_minPA_100.csv')
+rate18 = read_csv('2018_batting_rate_stat_leaders_batting_all_all_minPA_100.csv')
+rate19 = read_csv('2019_batting_rate_stat_leaders_batting_all_all_minPA_100.csv')
+rate21 = read_csv('2021_batting_rate_stat_leaders_batting_all_all_minPA_100.csv')
+rate16$Year = 2016
+rate17$Year = 2017
+rate18$Year = 2018
+rate19$Year = 2019
+rate21$Year = 2021
+bigRate = rbind(rate16,rate17, rate18, rate19, rate21)
+```
+
+```{r}
+library(corrr)
+library(paletteer)
+numerics = bigRate %>% select_if(is.numeric) %>% correlate()
+
+
+numerics %>%
+  stretch() %>%
+  ggplot(aes(x,y,fill=r))+
+  geom_tile()+
+   geom_text(aes(label = as.character(fashion(r)))) +
+  scale_fill_paletteer_c("viridis::magma", limits = c(-1, 1), direction = 1)
+```
+
+```{r}
+scaled = bigRate %>%
+  select_if(is.numeric) %>%
+  scale()
+```
+
+```{r}
+df = as.data.frame(scaled)
+df$Yr = bigRate$Yr
+```
+
+```{r}
+averages = df %>%
+  filter(Yr != 'N/A') %>%
+  group_by(Yr) %>%
+  summarise(PA=mean(PA),
+            wOBA=mean(wOBA),
+            wRC = mean(wRC),
+            wRAA = mean(wRAA),
+            OPS=mean(OPS),
+            OBP=mean(OBP),
+            SLG=mean(SLG),
+            BA = mean(BA),
+            ISO = mean(ISO),
+            BABIP = mean(BABIP),
+            `K%` = mean(`K%`),
+            `BB%` = mean(`BB%`),
+            `HR%` = mean(`HR%`))
+```
+
+
+```{r}
+get_chart <- function(metric) {
+  metric_label = deparse(substitute(metric))
+  averages %>%
+  ggplot(aes(x=Yr, y=metric, fill=Yr))+
+  scale_x_discrete(limits=c('Fr', 'So','Jr','Sr'))+
+  geom_bar(stat='identity')+
+  theme(legend.position = "none")+
+  labs(x='', y='', title=metric_label)
+}
+```
+`
+
+
+```{r}
+library(gridExtra)
+grid.arrange(get_chart(averages$PA), get_chart(averages$wOBA),
+get_chart(averages$wRC),
+get_chart(averages$wRAA),
+get_chart(averages$OPS),
+get_chart(averages$SLG),
+get_chart(averages$BA),
+get_chart(averages$ISO),
+get_chart(averages$BABIP),
+get_chart(averages$`BB%`),
+get_chart(averages$`HR%`),
+nrow=4,
+top='NCAA growth curve. 2016-2019, 2021 data. Min 100 PAs',
+left='Average Z-Score')
+```
+
